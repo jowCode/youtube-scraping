@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer');
 const cheerio = require("cheerio");
-const fs = require('fs');
 
 function parse(html) {
     // load the page source into cheerio
@@ -38,46 +37,52 @@ function parse(html) {
 }
 
 
+async function scroll(
+    page,
+    scrollDelay = 800,
+) {
+    try {
+        let previousHeight;
+
+        for (let i = 0; i < 9; i++) {
+            previousHeight = await page.evaluate('document.body.scrollHeight');
+            console.log('previousHeight: ', previousHeight);
+            await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+            await page.waitForFunction(`document.body.scrollHeight > ${previousHeight}`);
+            await page.waitForTimeout(scrollDelay);
+        }
+    } catch(e) { }
+    return page;
+}
+
+
 try {
     (async () => {
         let results = {};
         const browser = await puppeteer.launch({headless: false});
         const page = await browser.newPage();
-        await page.goto('https://www.youtube.com/results?search_query=a4+b5&sp=CAISBggEEAEYAw%253D%253D');
-
-        console.log('initial page load')
-
-        await page.waitForSelector('tp-yt-paper-dialog, ytd-button-renderer', {timeout: 10000});
+        await page.goto('https://www.youtube.com');
+        await new Promise(r => setTimeout(r, 5000));
+        console.log('initial page loaded')
+        // await page.waitForSelector('tp-yt-paper-dialog, ytd-button-renderer', {timeout: 10000});
         await page.keyboard.press('Tab');
+        await new Promise(r => setTimeout(r, 800));
         await page.keyboard.press('Tab');
+        await new Promise(r => setTimeout(r, 900));
         await page.keyboard.press('Tab');
+        await new Promise(r => setTimeout(r, 800));
         await page.keyboard.press('Tab');
+        await new Promise(r => setTimeout(r, 800));
         await page.keyboard.press('Tab');
+        await new Promise(r => setTimeout(r, 1000));
         await page.keyboard.press('Enter');
-
         console.log('accepted consent banner');
-
-
+        await new Promise(r => setTimeout(r, 5000));
+        console.log('do the search');
+        await page.goto('https://www.youtube.com/results?search_query=a4+b5&sp=CAISBggEEAEYAw%253D%253D');
         await page.waitForSelector('ytd-video-renderer,ytd-grid-video-renderer', {timeout: 10000});
-
         console.log('start scrolling');
-
-        await page.evaluate(async () => {
-            let scrollPosition = 0
-            let documentHeight = document.body.scrollHeight
-            console.log(documentHeight);
-            console.log(document.body.scrollHeight);
-            while (documentHeight > scrollPosition) {
-                window.scrollBy(0, documentHeight)
-                await new Promise(resolve => {
-                    setTimeout(resolve, 2000)
-                })
-                scrollPosition = documentHeight
-                documentHeight = document.body.scrollHeight
-                console.log(documentHeight);
-            }
-        });
-
+        await scroll(page);
         console.log('end scrolling');
 
         let html = await page.content();
